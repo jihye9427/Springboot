@@ -6,7 +6,7 @@ import java.sql.Timestamp;
 
 @Data
 public class Board {
-  private Long boardId;
+  private Long boardId;              //게시글아이디
   private String title;              //게시글제목
   private String content;            //게시글내용
   private String writer;            //게시글작성자
