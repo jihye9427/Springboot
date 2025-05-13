@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시글등록</title>
+</head>
+<body>
+<h3>게시글등록</h3>
+<form action="/products/add" method="post">
+  <div><label for="">상품명</label><input type="text" name="pname" id=""></div>
+  <div><label for="">가격</label><input type="text" name="price" id=""></div>
+  <div><label for="">수량</label><input type="text" name="quantity" id=""></div>
+  <div>
+    <button type="submit" id="btnAdd">등록</button>
+    <button type="button" id="btnFindAll">목록</button>
+  </div>
+</form>
+<script>
+  const btnFindAll = document.getElementById('btnFindAll');
+  btnFindAll.addEventListener('click',e=>{
+    location.href = '/products';   // GET http://localhost:9080/products
+  });
+</script>
+</body>
+</html>
