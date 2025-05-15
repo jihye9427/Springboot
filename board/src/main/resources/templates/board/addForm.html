@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시판 관리</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+
+    /* 페이지 제목 스타일 */
+    h1.title {
+      font-size: 22px;
+      font-weight: bold;
+      border-left: 5px solid #007BFF;
+      padding-left: 10px;
+    }
+
+    /* 테이블 스타일 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #f8f9fa;
+      text-align: left;
+      width: 120px;
+    }
+
+    /* 텍스트 입력창 */
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    textarea {
+      resize: vertical;
+    }
+
+    /* 유효성검사 오류메시지 스타일 */
+    .field-err {
+      color: red;
+      font-weight: bold;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* 버튼 스타일 */
+    .button-group {
+      text-align: center;
+      margin-top: 20px;
+    }
+    button {
+      padding: 8px 20px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+    }
+    #btnAdd {
+      background-color: #007BFF;
+    }
+    #btnFindAll {
+      background-color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+
+<h1 class="title">게시판 관리</h1>
+
+<form action="/boards/add" method="post" th:object="${saveForm}">
+  <table>
+    <tr>
+      <th>제목 <span style="color:red">*</span></th>
+      <td colspan="3">
+        <input type="text" name="title" th:value="*{title}">
+        <div class="field-err" th:each="err:${#fields.errors('title')}" th:text="${err}"></div>
+      </td>
+    </tr>
+    <tr>
+      <th>이름 <span style="color:red">*</span></th>
+      <td colspan="3">
+        <input type="text" name="writer" th:value="*{writer}">
+        <div class="field-err" th:each="err:${#fields.errors('writer')}" th:text="${err}"></div>
+      </td>
+    </tr>
+    <tr>
+      <th>내용 <span style="color:red">*</span></th>
+      <td colspan="3">
+        <textarea name="content" rows="5" th:text="*{content}"></textarea>
+        <div class="field-err" th:each="err:${#fields.errors('content')}" th:text="${err}"></div>
+      </td>
+    </tr>
+  </table>
+
+  <div class="button-group">
+    <button type="submit" id="btnAdd">저장</button>
+    <button type="button" id="btnFindAll">목록</button>
+  </div>
+</form>
+
+<script>
+  document.getElementById('btnFindAll').addEventListener('click', function () {
+    location.href = '/boards';
+  });
+</script>
+
+</body>
+</html>

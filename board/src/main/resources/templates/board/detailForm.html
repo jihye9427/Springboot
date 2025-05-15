@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시글 조회</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f6f9;
+      color: #333;
+    }
+
+    /* Wrapper 클래스: 페이지 전체 콘텐츠를 중앙 정렬하고 여백을 추가 */
+    .wrapper {
+      max-width: 1000px;
+      margin: 40px auto;  /* 중앙 정렬 */
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 페이지 제목 스타일 */
+    h1.title {
+      font-size: 22px;
+      font-weight: bold;
+      border-left: 5px solid #007BFF;
+      padding-left: 10px;
+    }
+
+    /* 테이블 스타일 */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      vertical-align: middle;
+    }
+    th {
+      background-color: #f8f9fa;
+      text-align: left;
+      width: 120px;
+    }
+
+    /* 텍스트 입력창 */
+    input[type="text"], textarea {
+      font-family: Arial, sans-serif;
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    textarea {
+      resize: vertical;
+    }
+
+    /* 버튼 스타일 */
+    .button-group {
+      text-align: center;
+      margin-top: 20px;
+    }
+    button {
+      padding: 8px 20px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      color: white;
+      cursor: pointer;
+    }
+    #btnUpdate {
+      background-color: #007BFF;
+    }
+    #btnDelete {
+      background-color: #dc3545;
+    }
+    #btnFindAll {
+      background-color: #6c757d;
+    }
+
+    /* 모달창 스타일 */
+    dialog {
+      padding: 20px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    dialog p {
+      margin-bottom: 20px;
+    }
+    dialog button {
+      margin: 0 10px;
+      padding: 6px 16px;
+    }
+  </style>
+</head>
+<body>
+
+<h1 class="title">게시글 조회</h1>
+
+<form th:object="${detailForm}">
+  <table>
+    <tr>
+      <th>아이디</th>
+      <td><input type="text" name="boardId" id="boardId" th:value="*{boardId}" readonly></td>
+    </tr>
+    <tr>
+      <th>제목</th>
+      <td><input type="text" name="title" id="title" th:value="*{title}" readonly></td>
+    </tr>
+    <tr>
+      <th>내용</th>
+      <td><textarea name="content" id="content" rows="5" th:text="*{content}" readonly></textarea></td>
+    </tr>
+    <tr>
+      <th>작성자</th>
+      <td><input type="text" name="writer" id="writer" th:value="*{writer}" readonly></td>
+    </tr>
+    <tr>
+      <th>작성날짜</th>
+      <td><input type="text" name="created_date" id="created_date" th:value="${#dates.format(detailForm.created_date, 'yyyy-MM-dd HH:mm')}" readonly></td>
+    </tr>
+  </table>
+
+  <div class="button-group">
+    <button type="button" id="btnUpdate">수정</button>
+    <button type="button" id="btnDelete">삭제</button>
+    <button type="button" id="btnFindAll">목록</button>
+  </div>
+</form>
+<dialog id="modalDel" style="
+  border: none;
+  border-radius: 8px;
+  padding: 30px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  text-align: center;
+  font-family: Arial, sans-serif;
+">
+  <form method="dialog">
+    <p style="font-size: 16px; font-weight: bold; margin-bottom: 20px;">정말 삭제하시겠습니까?</p>
+    <div style="display: flex; justify-content: center; gap: 10px;">
+      <button class="btnYes" value="yes" style="
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        background-color: #dc3545;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+      ">예</button>
+      <button class="btnNo" value="no" style="
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        background-color: #6c757d;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+      ">아니오</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  document.getElementById('btnUpdate').addEventListener('click', function () {
+    const boardId = document.getElementById('boardId').value;
+    location.href = `/boards/${boardId}/edit`;
+  });
+
+  document.getElementById('btnDelete').addEventListener('click', function () {
+    const boardId = document.getElementById('boardId').value;
+    const modalDel = document.getElementById('modalDel');
+    const btnYes = document.querySelector('.btnYes');
+    const btnNo = document.querySelector('.btnNo');
+
+    modalDel.showModal();
+
+    modalDel.addEventListener('close', function () {
+      if (modalDel.returnValue === 'yes') {
+        location.href = `/boards/${boardId}/del`;
+      }
+    });
+
+    btnYes.addEventListener('click', function () {
+      modalDel.close('yes');
+    });
+
+    btnNo.addEventListener('click', function () {
+      modalDel.close('no');
+    });
+  });
+
+  document.getElementById('btnFindAll').addEventListener('click', function () {
+    location.href = '/boards';
+  });
+</script>
+
+</body>
+</html>

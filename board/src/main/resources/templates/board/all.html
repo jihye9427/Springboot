@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>게시글 목록</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', 'Noto Sans KR', sans-serif;
+      background-color: #f4f6f9;
+      margin: 0;
+      padding: 40px;
+      color: #333;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    /* 페이지 제목 스타일 */
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #2c3e50;
+      letter-spacing: 1px;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #007BFF;
+      display: inline-block;
+      padding-bottom: 10px;
+    }
+
+    /* 테이블 스타일 */
+    .table-container {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead th {
+      background-color: #f1f3f6;
+      color: #333;
+      font-weight: 700;
+      padding: 12px 10px;
+      text-align: center;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    /* 아이디 열 진하게 스타일 */
+    thead th:nth-child(2), tbody td:nth-child(2) {
+      font-weight: bold; /* 아이디 열 글자 진하게 */
+    }
+    tbody td {
+      padding: 14px 10px;
+      text-align: left;
+      border-bottom: 1px solid #e6e6e6;
+      font-size: 14px;
+    }
+
+    /* 링크 스타일 */
+    tbody tr:hover {
+      background-color: #f9f9f9;
+      transition: background-color 0.2s;
+    }
+    a {
+      color: #007BFF;
+      text-decoration: none;
+      font-weight: 700;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* 버튼 스타일 */
+    .button-group {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #btnDel {
+      background-color: #007BFF;
+      color: white;
+    }
+    #btnDel:hover {
+      background-color: #c82333;
+    }
+    #btnAdd {
+      background-color: #007BFF;
+      color: white;
+    }
+    #btnAdd:hover {
+      background-color: #0056b3;
+    }
+
+    /* 체크박스 스타일 */
+    input[type="checkbox"] {
+      transform: scale(1.1);
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>게시글 목록</h1>
+
+  <div class="table-container">
+    <form id="frm" action="/boards/del" method="post">
+      <table>
+        <thead>
+        <tr>
+          <th>선택</th>
+          <th>아이디</th>
+          <th>제목</th>
+          <th>내용</th>
+          <th>작성자</th>
+          <th>작성날짜</th>
+          <th>수정날짜</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="board : ${list}">
+          <td><input type="checkbox" name="boardIds" th:value="${board.boardId}"></td>
+          <td th:text="${board.boardId}">1</td>
+          <td><a th:href="@{/boards/{id}(id=${board.boardId})}" th:text="${board.title}">제목</a></td>
+          <td th:text="${board.content}">내용</td>
+          <td th:text="${board.writer}">작성자</td>
+          <td th:text="${#dates.format(board.created_date, 'yyyy-MM-dd HH:mm')}">작성일</td>
+          <td th:text="${#dates.format(board.modified_date, 'yyyy-MM-dd HH:mm')}">수정일</td>
+        </tr>
+        </tbody>
+      </table>
+    </form>
+    <div class="button-group">
+      <button id="btnAdd">작성</button>
+      <button id="btnDel">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 삭제
+  document.getElementById('btnDel').addEventListener('click', function () {
+    if (confirm('삭제하시겠습니까?')) {
+      document.getElementById('frm').submit();
+    }
+  });
+
+  // 등록
+  document.getElementById('btnAdd').addEventListener('click', function () {
+    window.location.href = '/boards/add';
+  });
+</script>
+</body>
+</html>
