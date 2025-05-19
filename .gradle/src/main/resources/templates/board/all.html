@@ -57,13 +57,18 @@
 
     /* 아이디 열 진하게 스타일 */
     thead th:nth-child(2), tbody td:nth-child(2) {
-      font-weight: bold;
+      font-weight: bold; /* 아이디 열 글자 진하게 */
     }
     tbody td {
       padding: 14px 10px;
       text-align: left;
       border-bottom: 1px solid #e6e6e6;
       font-size: 14px;
+    }
+    tbody td:nth-child(3),
+    tbody td:nth-child(5){
+      text-align: center;
+      vertical-align: middle;
     }
 
     /* 링크 스타일 */
@@ -150,8 +155,8 @@
       </table>
     </form>
     <div class="button-group">
-      <button type="button" id="btnAdd">작성</button>
-      <button type="button" id="btnDel">삭제</button>
+      <button id="btnAdd">작성</button>
+      <button id="btnDel">삭제</button>
     </div>
   </div>
 </div>
