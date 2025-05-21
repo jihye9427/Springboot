@@ -21,7 +21,7 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 @Repository
-class BoardDAOImpl implements BoardDAO {
+public class BoardDAOImpl implements BoardDAO {
 
   final private NamedParameterJdbcTemplate template;
 
