@@ -82,6 +82,9 @@
 <h1 class="title">게시판 관리</h1>
 
 <form action="/boards/add" method="post" th:object="${saveForm}">
+  <div th:if="${#fields.hasGlobalErrors()}">
+    <p class="global-err" th:each="err:${#fields.globalErrors()}" th:text="${err}"></p>
+  </div>
   <table>
     <tr>
       <th>제목 <span style="color:red">*</span></th>

@@ -8,6 +8,7 @@ import com.kdt.board.web.form.board.UpdateForm;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -29,7 +30,8 @@ public class BoardController {
   public String findAll(Model model) {
     List<Board> list = boardSVC.findAll();
     model.addAttribute("list", list);
-    return "board/all";   //view
+
+    return "board/all";
   }
 
   //게시글 작성화면
@@ -64,11 +66,10 @@ public class BoardController {
     Long pid = boardSVC.save(board);
     log.info("게시글 저장 후 id={}", pid);
     redirectAttributes.addAttribute("id",pid);
-    return "redirect:/boards/{id}"; //http 응답메세지  상태라인 : 302
+    return "redirect:/board/{id}"; //http 응답메세지  상태라인 : 302
     //               응답헤더 -> location : http://localhost:9090/boards/2
     //http 요청메세지  요청라인 : GET http://localhost:9090/boards/2
   }
-
 
 
   //게시글 상세조회
@@ -81,19 +82,15 @@ public class BoardController {
     log.info("id={}",id);
 
     Optional<Board> optionalBoard = boardSVC.findById(id);
-    Board findedBoard = optionalBoard.orElseThrow();
+    Board board = optionalBoard.orElseThrow();
 
     DetailForm detailForm = new DetailForm();
-    detailForm.setBoardId(findedBoard.getBoardId());
-    detailForm.setTitle(findedBoard.getTitle());
-    detailForm.setContent(findedBoard.getContent());
-    detailForm.setWriter(findedBoard.getWriter());
-    detailForm.setCreated_date(findedBoard.getCreated_date());
+    BeanUtils.copyProperties(board, detailForm);
 
+    log.info("detailForm={}", detailForm);
+    model.addAttribute("detailForm", detailForm);
 
-    model.addAttribute("detailForm",detailForm);
-
-    return "board/detailForm";   //상품상세화면
+    return "board/detailForm";
   }
 
 
@@ -104,7 +101,7 @@ public class BoardController {
 
     int rows = boardSVC.deleteById(boardId);
 
-    return "redirect:/boards";      // 302 get redirectUrl: http://localhost:9080/boards
+    return "redirect:/board";      // 302 get redirectUrl: http://localhost:9080/boards
   }
 
   //게시글 삭제(여러건)
@@ -115,7 +112,7 @@ public class BoardController {
 
     int rows = boardSVC.deleteByIds(boardIds);
     log.info("상품정보 {}-건 삭제됨!", rows);
-    return "redirect:/boards";
+    return "redirect:/board";
   }
 
   //게시글 수정화면
@@ -172,7 +169,7 @@ public class BoardController {
 
     // 상세 페이지로 바로이동
     redirectAttributes.addAttribute("id",boardId);
-    return "redirect:/boards/{id}";  // 302 get redirectUrl-> http://localhost/boards/id
+    return "redirect:/board/{id}";  // 302 get redirectUrl-> http://localhost/boards/id
   }
 
   //

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>댓글 관리</title>
+</head>
+<body>
+  <h3>댓글</h3>
+  <textarea id="commentInput" placeholder="댓글을 입력하세요"></textarea>
+  <button id="commentSubmitBtn">댓글 작성</button>
+
+  <div id="commentList"></div>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const postId = document.body.dataset.postId; // 예: <body data-post-id="123">
+    const loginId = document.body.dataset.loginId;
+
+    const commentInput = document.getElementById('commentInput');
+    const commentList = document.getElementById('commentList');
+    const commentSubmitBtn = document.getElementById('commentSubmitBtn');
+
+    // 댓글 목록 불러오기
+    function loadComments() {
+      fetch(`/api/comments/${postId}`)
+        .then(res => res.json())
+        .then(data => {
+          commentList.innerHTML = '';
+          data.forEach(comment => {
+            const div = document.createElement('div');
+            div.dataset.commentId = comment.commentId;
+
+            let html = `<b>${comment.writer}</b>: <span class="commentContent">${comment.content}</span>`;
+            if (comment.writer === loginId) {
+              html += `
+                <button class="btnEditComment">수정</button>
+                <button class="btnDeleteComment">삭제</button>`;
+            }
+            div.innerHTML = html;
+            commentList.appendChild(div);
+          });
+        });
+    }
+
+    // 댓글 작성
+    commentSubmitBtn.addEventListener('click', () => {
+      const content = commentInput.value.trim();
+      if (!content) {
+        alert('댓글 내용을 입력하세요');
+        return;
+      }
+
+      fetch(`/api/comments/${postId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ writer: loginId, content })
+      }).then(() => {
+        commentInput.value = '';
+        loadComments();
+      });
+    });
+
+    // 댓글 수정 및 삭제 처리
+    commentList.addEventListener('click', function (e) {
+      const target = e.target;
+      const commentDiv = target.closest('[data-comment-id]');
+      const commentId = commentDiv?.dataset.commentId;
+
+      // 수정 버튼
+      if (target.classList.contains('btnEditComment')) {
+        const contentSpan = commentDiv.querySelector('.commentContent');
+        const oldContent = contentSpan.textContent;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = oldContent;
+        input.className = 'editInput';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = '저장';
+        saveBtn.className = 'btnSaveEdit';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '취소';
+        cancelBtn.className = 'btnCancelEdit';
+
+        commentDiv.innerHTML = '';
+        commentDiv.appendChild(input);
+        commentDiv.appendChild(saveBtn);
+        commentDiv.appendChild(cancelBtn);
+
+        saveBtn.addEventListener('click', () => {
+          const newContent = input.value.trim();
+          if (!newContent) {
+            alert('내용을 입력하세요');
+            return;
+          }
+
+          fetch(`/api/comments/${commentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent })
+          }).then(loadComments);
+        });
+
+        cancelBtn.addEventListener('click', () => {
+          loadComments();
+        });
+      }
+
+      // 삭제 버튼
+      if (target.classList.contains('btnDeleteComment')) {
+        if (confirm('정말 삭제하시겠습니까?')) {
+          fetch(`/api/comments/${commentId}`, {
+            method: 'DELETE'
+          }).then(loadComments);
+        }
+      }
+    });
+
+    // 초기 로드
+    loadComments();
+  });
+</script>
+
+</body>
+</html>

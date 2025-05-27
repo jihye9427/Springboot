@@ -2,7 +2,7 @@ package com.kdt.board.web.form.comments;
 
 import lombok.Data;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 
 @Data
 public class DetailForm {
@@ -11,6 +11,6 @@ public class DetailForm {
   private Long parentId;               //대댓글의 아이디
   private String writer;              //댓글 작성자
   private String content;            //댓글 내용
-  private Timestamp createdAt;     //댓글 작성날짜
-  private Timestamp updatedAt;    //댓글 수정날짜
+  private LocalDateTime createdAt;     //댓글 작성날짜
+  private LocalDateTime updatedAt;    //댓글 수정날짜
 }

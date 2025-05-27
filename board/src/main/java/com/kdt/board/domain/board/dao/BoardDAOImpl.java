@@ -33,8 +33,8 @@ public class BoardDAOImpl implements BoardDAO {
       board.setTitle(rs.getString("title"));
       board.setContent(rs.getString("content"));
       board.setWriter(rs.getString("writer"));
-      board.setCreated_date(rs.getTimestamp("created_date"));
-      board.setModified_date(rs.getTimestamp("modified_date"));
+      board.setCreated_date(rs.getTimestamp("created_date").toLocalDateTime());
+      board.setModified_date(rs.getTimestamp("modified_date").toLocalDateTime());
       return board;
     };
   }

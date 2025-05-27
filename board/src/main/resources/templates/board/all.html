@@ -143,8 +143,8 @@
           <td><a th:href="@{/boards/{id}(id=${board.boardId})}" th:text="${board.title}">제목</a></td>
           <td th:text="${board.content}">내용</td>
           <td th:text="${board.writer}">작성자</td>
-          <td th:text="${#dates.format(board.created_date, 'yyyy-MM-dd HH:mm')}">작성일</td>
-          <td th:text="${#dates.format(board.modified_date, 'yyyy-MM-dd HH:mm')}">수정일</td>
+          <td th:text="${#temporals.format(board.created_date, 'yyyy-MM-dd HH:mm')}">작성일</td>
+          <td th:text="${#temporals.format(board.modified_date, 'yyyy-MM-dd HH:mm')}">수정일</td>
         </tr>
         </tbody>
       </table>

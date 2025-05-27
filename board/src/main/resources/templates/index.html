@@ -52,8 +52,41 @@
 </head>
 <body>
 <div class="container">
-  <h3>독서모임 노트 게시판</h3>
-  <a href="/boards" th:href="@{/boards}" class="button">게시판 들어가기</a>
+  <h3 th:if="${!session.isEmpty()}">
+    <span th:text="${session.loginMember.nickname}"></span>방문을 환영 합니다.
+  </h3>
+  <!-- 로그인 전-->
+  <ul th:if="${session.isEmpty()}">
+    <li><a href="http://www.naver.com" th:href="@{/member/join}">회원가입</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/login}">로그인</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/boards}">게시판관리(SSR)</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/csr/boards}">게시판관리(CSR)</a></li>
+  </ul>
+  <!-- 로그인 후-->
+  <ul th:if="${!session.isEmpty()}">
+    <li><a href="http://www.naver.com" th:href="@{/member/join}">회원가입</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/login}">로그인</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/boards}">게시판관리(SSR)</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/csr/boards}">게시판관리(CSR)</a></li>
+    <li><a href="http://www.naver.com" th:href="@{/login}" id="logout">로그아웃</a></li>
+  </ul>
+  <script type="module">
+    import {ajax} from '/js/common.js';
+
+    const h_logout = async (url)=>{
+      const json = await ajax.delete(url); // DELETE http://localhost:9090/logout
+      if(json.header.rtcd == 'S00') {
+        location.href = 'http://localhost:9090/';  //초기화면으로 이동
+      }
+    }
+
+    const $logout = document.getElementById('logout');
+    $logout?.addEventListener('click', e=>{
+      e.preventDefault();   // 기본이벤트 막기
+      const url = `/logout`;
+      h_logout(url);
+    });
+  </script>
 </div>
 </body>
 </html>
