@@ -24,10 +24,9 @@ public class CodeSVCImpl implements CodeSVC {
   }
 
   @PostConstruct
-  private List<CodeDTO> getA02Code() {
-    log.info("getA02Code() 수행됨!");
+  private void initA02Code() {
+    log.info("A02 코드 초기화 수행됨!");
     a02 = codeDAO.loadCodes(CodeId.A02);
-    return a02;
   }
 
   public List<CodeDTO> getA02() {

@@ -1,10 +1,9 @@
-package com.kdt.board.domain.comments.dao;
+package com.kdt.board.domain.comment.dao;
 
 import com.kdt.board.domain.entity.Comment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -29,26 +28,34 @@ public class CommentDAOImpl implements CommentDAO {
   public Long save(Comment comments) {
     StringBuffer sql = new StringBuffer();
     sql.append("INSERT INTO comments(comment_id, board_id, parent_id, writer, content, created_at) ");
-    sql.append("VALUES (seq_comment_id.NEXTVAL, :board_id, :parent_id, :writer, :content, SYSTIMESTAMP) ");
+    sql.append("VALUES (seq_comment_id.NEXTVAL, :boardId, :parentId, :writer, :content, SYSTIMESTAMP) ");
 
     SqlParameterSource param = new BeanPropertySqlParameterSource(comments);
 
     KeyHolder keyHolder = new GeneratedKeyHolder();
-    long rows = template.update(sql.toString(),param, keyHolder, new String[]{"comment_id"} );
+    template.update(sql.toString(), param, keyHolder, new String[]{"comment_id"});
     return ((Number)keyHolder.getKeys().get("comment_id")).longValue();
   }
 
   private RowMapper<Comment> doRowMapper(){
-
-    return (rs, rowNum)->{
+    return (rs, rowNum) -> {
       Comment comments = new Comment();
       comments.setCommentId(rs.getLong("comment_id"));
       comments.setBoardId(rs.getLong("board_id"));
-      comments.setParentId(rs.getLong("parent_id"));
+
+      long parentId = rs.getLong("parent_id");
+      if (!rs.wasNull()) {
+        comments.setParentId(parentId);
+      }
+
       comments.setWriter(rs.getString("writer"));
       comments.setContent(rs.getString("content"));
       comments.setCreatedAt(rs.getTimestamp("created_at").toLocalDateTime());
-      comments.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+
+      if (rs.getTimestamp("updated_at") != null) {
+        comments.setUpdatedAt(rs.getTimestamp("updated_at").toLocalDateTime());
+      }
+
       return comments;
     };
   }
@@ -60,36 +67,34 @@ public class CommentDAOImpl implements CommentDAO {
   @Override
   public List<Comment> findAll() {
     StringBuffer sql = new StringBuffer();
-    sql.append(" SELECT comment_id, board_id, parent_id, writer, content, updated_at ");
-    sql.append(" FROM comments ");
-    sql.append(" ORDER BY comment_id DESC ");
+    sql.append("SELECT comment_id, board_id, parent_id, writer, content, created_at, updated_at ");
+    sql.append("FROM comments ");
+    sql.append("ORDER BY comment_id DESC ");
 
-    List<Comment> list = template.query(sql.toString(), doRowMapper());
-    return list;
+    return template.query(sql.toString(), doRowMapper());
   }
 
   /**
    * 댓글 상세 조회
-   * @param id
-   * @return
+   * @param id 댓글번호
+   * @return 댓글정보
    */
   @Override
   public Optional<Comment> findById(Long id) {
     StringBuffer sql = new StringBuffer();
-    sql.append(" SELECT comment_id, writer, content, updated_at ");
-    sql.append(" FROM comments ");
-    sql.append(" WHERE comment_id = :id ");
+    sql.append("SELECT comment_id, board_id, parent_id, writer, content, created_at, updated_at ");
+    sql.append("FROM comments ");
+    sql.append("WHERE comment_id = :id ");
 
     SqlParameterSource param = new MapSqlParameterSource().addValue("id", id);
 
-    Comment comments = null;
     try {
-      comments = template.queryForObject(sql.toString(), param, BeanPropertyRowMapper.newInstance(Comment.class));
+      Comment comment = template.queryForObject(sql.toString(), param, doRowMapper());
+      return Optional.of(comment);
     } catch (EmptyResultDataAccessException e) {
+      log.debug("댓글을 찾을 수 없습니다. commentId: {}", id);
       return Optional.empty();
     }
-
-    return Optional.of(comments);
   }
 
   /**
@@ -100,11 +105,13 @@ public class CommentDAOImpl implements CommentDAO {
   @Override
   public int deleteById(Long id) {
     StringBuffer sql = new StringBuffer();
-    sql.append(" DELETE FROM comments ");
-    sql.append(" WHERE comment_id = :id ");
+    sql.append("DELETE FROM comments ");
+    sql.append("WHERE comment_id = :id ");
 
     Map<String, Long> param = Map.of("id", id);
     int rows = template.update(sql.toString(), param);
+
+    log.debug("댓글 삭제 완료. commentId: {}, 삭제된 행 수: {}", id, rows);
     return rows;
   }
 
@@ -112,42 +119,37 @@ public class CommentDAOImpl implements CommentDAO {
    * 댓글 수정
    * @param commentId 댓글번호
    * @param comments 댓글정보
-   * @return 수정건수
+   * @return
    */
   @Override
   public int updateById(Long commentId, Comment comments) {
     StringBuffer sql = new StringBuffer();
-    sql.append(" UPDATE comments ");
-    sql.append(" SET writer = :writer, content = :content, ");
-    sql.append("     updated_at = CURRENT_TIMESTAMP ");
-    sql.append(" WHERE comment_id = :commentId ");
+    sql.append("UPDATE comments ");
+    sql.append("SET content = :content, updated_at = CURRENT_TIMESTAMP ");
+    sql.append("WHERE comment_id = :commentId ");
 
     SqlParameterSource param = new MapSqlParameterSource()
-        .addValue("commentId", comments.getCommentId())
-        .addValue("boardId", comments.getBoardId())
-        .addValue("parentId", comments.getParentId())
-        .addValue("writer", comments.getWriter())
-        .addValue("content", comments.getContent())
-        .addValue("createdAt", comments.getCreatedAt())
-        .addValue("updatedAt", comments.getUpdatedAt());
+        .addValue("commentId", commentId)
+        .addValue("content", comments.getContent());
 
     int rows = template.update(sql.toString(), param);
 
+    log.debug("댓글 수정 완료. commentId: {}, 수정된 행 수: {}", commentId, rows);
     return rows;
   }
 
   /**
-   * 특정 게시글에 달린 댓글 목록조회
-   * @param boardId 게시글 id
+   * 특정 게시글에 달린 목록조회
+   * @param boardId 게시글번호
    * @return 해당 게시글에 달린 댓글 리스트
    */
   @Override
   public List<Comment> findAllbyBoardId(Long boardId) {
     StringBuffer sql = new StringBuffer();
-    sql.append(" SELECT comment_id, board_id, parent_id, writer, content, created_at, updated_at ");
-    sql.append(" FROM comments ");
-    sql.append(" WHERE board_id = :boardId ");
-    sql.append(" ORDER BY comment_id DESC ");
+    sql.append("SELECT comment_id, board_id, parent_id, writer, content, created_at, updated_at ");
+    sql.append("FROM comments ");
+    sql.append("WHERE board_id = :boardId ");
+    sql.append("ORDER BY comment_id ASC ");
 
     SqlParameterSource param = new MapSqlParameterSource().addValue("boardId", boardId);
     return template.query(sql.toString(), param, doRowMapper());

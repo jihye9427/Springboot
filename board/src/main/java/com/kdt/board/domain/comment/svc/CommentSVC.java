@@ -1,4 +1,4 @@
-package com.kdt.board.domain.comments.svc;
+package com.kdt.board.domain.comment.svc;
 
 import com.kdt.board.domain.entity.Comment;
 

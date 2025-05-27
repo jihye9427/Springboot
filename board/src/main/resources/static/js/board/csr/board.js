@@ -1,4 +1,6 @@
-import { ajax,  PaginationUI} from '/js/common.js';
+
+import { ajax, PaginationUI } from '/js/board/common.js';
+import commentManager from '/js/board/csr/comment.js';
 
 let currentPage = 1; // 현재 보고 있는 페이지
 let initialPage = 1; // 게시글 등록 후 이동할 페이지
@@ -6,14 +8,22 @@ let initialPage = 1; // 게시글 등록 후 이동할 페이지
 const recordsPerPage = 10;        // 한 페이지당 게시글수
 const pagesPerPage = 10;          // 한 페이지당 페이지수
 
+//전역 변수
+let frm, BoardId2, title2, content2, writer2;
+let errTitle, errContent, errWriter;
+
 //게시글 등록
 const addBoard = async board => {
   try {
-    const url = '/api/Boards';
+    const url = '/api/boards';
     const result = await ajax.post(url, board);
     if (result.header.rtcd === 'S00') {
       console.log(result.body);
       frm.reset();
+      errTitle.textContent = '';
+      errContent.textContent = '';
+      errWriter.textContent = '';
+
       initialPage = 1; // 생성 후 1페이지로 이동
       getBoards(initialPage, recordsPerPage); // 첫 페이지의 기본 레코드로 호출
       configPagination();
@@ -32,21 +42,25 @@ const addBoard = async board => {
 //게시글 조회
 const getBoard = async pid => {
   try {
-    const url = `/api/Boards/${pid}`;
+    const url = `/api/boards/${pid}`;
     const result = await ajax.get(url);
     console.log(result);
     if (result.header.rtcd === 'S00') {
       console.log(result.body);
-      // BoardId2.value = result.body.BoardId;
+
+      // 게시글 정보 설정
       BoardId2.setAttribute('value', result.body.BoardId);
       title2.setAttribute('value', result.body.title);
       content2.setAttribute('value', result.body.content);
-       writer2.setAttribute('value', result.body. writer);
+      writer2.setAttribute('value', result.body.writer);
 
       BoardId2.value = result.body.BoardId;
       title2.value = result.body.title;
-      content2.value =  result.body.content;
+      content2.value = result.body.content;
       writer2.value = result.body.writer;
+
+      // 댓글 섹션 초기화 및 댓글 로드
+      commentManager.init(result.body.BoardId);
 
     } else if(result.header.rtcd.substr(0,1) == 'E'){
         for(let key in result.header.details){
@@ -63,13 +77,17 @@ const getBoard = async pid => {
 //게시글 삭제
 const delBoard = async (pid, frm) => {
   try {
-    const url = `/api/Boards/${pid}`;
+    const url = `/api/boards/${pid}`;
     const result = await ajax.delete(url);
     console.log(result);
     if (result.header.rtcd === 'S00') {
       console.log(result.body);
       const $inputs = frm.querySelectorAll('input');
       [...$inputs].forEach(ele => (ele.value = '')); //폼필드 초기화
+
+      // 댓글 섹션 숨기기
+      commentManager.hideCommentsSection();
+
       getBoards(currentPage, recordsPerPage); // 현재 페이지의 기본 레코드로 호출
     } else if(result.header.rtcd.substr(0,1) == 'E'){
         for(let key in result.header.details){
@@ -86,7 +104,7 @@ const delBoard = async (pid, frm) => {
 //게시글 수정
 const modifyBoard = async (pid, board) => {
   try {
-    const url = `/api/Boards/${pid}`;
+    const url = `/api/boards/${pid}`;
     const result = await ajax.patch(url, board);
     if (result.header.rtcd === 'S00') {
       console.log(result.body);
@@ -105,15 +123,13 @@ const modifyBoard = async (pid, board) => {
 
 //게시글 목록
 const getBoards = async (reqPage, reqRec) => {
-
   try {
-    const url = `/api/Boards/paging?pageNo=${reqPage}&numOfRows=${reqRec}`;
+    const url = `/api/boards/paging?pageNo=${reqPage}&numOfRows=${reqRec}`;
     const result = await ajax.get(url);
 
     if (result.header.rtcd === 'S00') {
       currentPage = reqPage; // 현재 페이지 업데이트
       displayBoardList(result.body);
-
     } else {
       alert(result.header.rtmsg);
     }
@@ -151,6 +167,12 @@ function displayForm() {
 
   document.body.insertAdjacentElement('afterbegin', $addFormWrap);
   const $frm = $addFormWrap.querySelector('#frm');
+
+  frm = $frm;
+  errTitle = document.getElementById('errTitle');
+  errContent = document.getElementById('errContent');
+  errWriter = document.getElementById('errWriter');
+
   $frm.addEventListener('submit', e => {
     e.preventDefault(); // 기본동작 중지
 
@@ -178,7 +200,6 @@ function displayForm() {
     );
 
     addBoard(Board);
-
   });
 }
 
@@ -216,7 +237,10 @@ function displayReadForm() {
 
     //취소
     $btnCancel.addEventListener('click', e => {
-      frm.reset(); //초기화
+      const boardId = BoardId2.value;
+      if (boardId) {
+        getBoard(boardId);
+      }
       changeReadMode(frm);
     });
   };
@@ -257,7 +281,6 @@ function displayReadForm() {
   const $readFormWrap = document.createElement('div');
   $readFormWrap.innerHTML = `
     <form id="frm2">
-
       <div>
           <label for="BoardId2">게시글아이디</label>
           <input type="text" id="BoardId2" name="BoardId" readonly/>
@@ -274,20 +297,22 @@ function displayReadForm() {
           <label for="writer">작성자</label>
           <input type="text" id="writer2" name="writer"/>
       </div>
-      </div>
       <div class='btns'></div>
-
     </form>
   `;
 
   document.body.insertAdjacentElement('afterbegin', $readFormWrap);
   const $frm2 = $readFormWrap.querySelector('#frm2');
+  BoardId2 = document.getElementById('BoardId2');
+  title2 = document.getElementById('title2');
+  content2 = document.getElementById('content2');
+  writer2 = document.getElementById('writer2');
+
   changeReadMode($frm2);
 }
 
 //게시글 목록 화면
 function displayBoardList(Boards) {
-
   const makeTr = Boards => {
     const $tr = Boards
       .map(
@@ -316,7 +341,6 @@ function displayBoardList(Boards) {
 
   const $Boards = $list.querySelectorAll('table tbody tr');
 
-  // Array.from($Boards)
   [...$Boards].forEach(Board =>
     Board.addEventListener('click', e => {
       const pid = e.currentTarget.dataset.pid;
@@ -327,7 +351,6 @@ function displayBoardList(Boards) {
 
 displayReadForm(); //조회
 displayForm();//등록
-//getBoards();//목록
 
 const $list = document.createElement('div');
 $list.setAttribute('id','list')
@@ -338,7 +361,7 @@ divEle.setAttribute('id','reply_pagenation');
 document.body.appendChild(divEle);
 
 async function configPagination(){
-  const url = '/api/Boards/totCnt';
+  const url = '/api/boards/totCnt';
   try {
     const result = await ajax.get(url);
 

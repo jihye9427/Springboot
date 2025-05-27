@@ -1,6 +1,7 @@
-import { ajax, PaginationUI } from '/js/common.js';
+import { ajax, PaginationUI } from '/js/board/common.js';
+import commentManager from '/js/board/csr/comment.js';
 
-const doBoard = ()=>{
+const doBoard = () => {
   // 상수 및 설정
   const CONFIG = {
     recordsPerPage: 10,     //한 페이지에 보여줄 행 수
@@ -18,9 +19,9 @@ const doBoard = ()=>{
     readBoardForm: null,          // 게시글조회
 
     BoardId2: null,               // 게시글아이디
-    title2: null,                   // 게시글명
-    content2: null,                // 게시글수량
-    writer2: null,                   // 게시글가격
+    title2: null,                 // 게시글제목
+    content2: null,               // 게시글내용
+    writer2: null,                // 게시글작성자
 
     list: document.createElement('div'),            // 게시글목록
     pagination: document.createElement('div')       // 게시글페이지
@@ -49,7 +50,7 @@ const doBoard = ()=>{
     },
 
     async addBoard(Board) {
-      const url = '/api/Boards';
+      const url = '/api/boards';
       const result = await this.call('post', url, Board);
 
       if (result && result.header.rtcd === 'S00') {
@@ -59,6 +60,13 @@ const doBoard = ()=>{
           elements.addBoardForm.querySelectorAll('.field-error.client').forEach(span => span.textContent = '');
         }
         this.getBoards(1);
+      } else if (result && result.header.rtcd.substr(0,1) == 'E') {
+
+        for(let key in result.header.details){
+          console.log(`필드명:${key}, 오류:${result.header.details[key]}`);
+          const errSpan = elements.addBoardForm.querySelector(`#err${key.charAt(0).toUpperCase() + key.slice(1)}`);
+          if (errSpan) errSpan.textContent = result.header.details[key];
+        }
       } else {
         console.log('게시글 등록 실패:', result?.header.rtmsg);
         alert(`게시글 등록 실패: ${result?.header.rtmsg || '알 수 없는 오류'}`);
@@ -66,12 +74,19 @@ const doBoard = ()=>{
     },
 
     async getBoard(pid) {
-      const url = `/api/Boards/${pid}`;
+      const url = `/api/boards/${pid}`;
       const result = await this.call('get', url);
 
       if (result && result.header.rtcd === 'S00') {
         console.log('게시글 조회 성공:', result.body);
         ui.updateFormFields(result.body);
+
+        commentManager.init(result.body.BoardId);
+
+      } else if (result && result.header.rtcd.substr(0,1) == 'E') {
+        for(let key in result.header.details){
+          console.log(`필드명:${key}, 오류:${result.header.details[key]}`);
+        }
       } else {
         console.log('게시글 조회 실패:', result?.header.rtmsg);
         alert(`게시글 조회 실패: ${result?.header.rtmsg || '알 수 없는 오류'}`);
@@ -79,15 +94,23 @@ const doBoard = ()=>{
     },
 
     async deleteBoard(pid, formToReset) {
-      const url = `/api/Boards/${pid}`;
+      const url = `/api/boards/${pid}`;
       const result = await this.call('delete', url);
 
       if (result && result.header.rtcd === 'S00') {
         console.log('게시글 삭제 성공:', result.body);
         if (formToReset) {
-          formToReset.reset();
+          const $inputs = formToReset.querySelectorAll('input, textarea');
+          [...$inputs].forEach(ele => (ele.value = ''));
         }
+
+        commentManager.hideCommentsSection();
+
         this.getBoards(state.currentPage);
+      } else if (result && result.header.rtcd.substr(0,1) == 'E') {
+        for(let key in result.header.details){
+          console.log(`필드명:${key}, 오류:${result.header.details[key]}`);
+        }
       } else {
         console.log('게시글 삭제 실패:', result?.header.rtmsg);
         alert(`게시글 삭제 실패: ${result?.header.rtmsg || '알 수 없는 오류'}`);
@@ -95,12 +118,16 @@ const doBoard = ()=>{
     },
 
     async modifyBoard(pid, Board) {
-      const url = `/api/Boards/${pid}`;
+      const url = `/api/boards/${pid}`;
       const result = await this.call('patch', url, Board);
 
       if (result && result.header.rtcd === 'S00') {
         console.log('게시글 수정 성공:', result.body);
         this.getBoards(state.currentPage);
+      } else if (result && result.header.rtcd.substr(0,1) == 'E') {
+        for(let key in result.header.details){
+          console.log(`필드명:${key}, 오류:${result.header.details[key]}`);
+        }
       } else {
         console.log('게시글 수정 실패:', result?.header.rtmsg);
         alert(`게시글 수정 실패: ${result?.header.rtmsg || '알 수 없는 오류'}`);
@@ -108,7 +135,7 @@ const doBoard = ()=>{
     },
 
     async getBoards(pageNo) {
-      const url = `/api/Boards/paging?pageNo=${pageNo}&numOfRows=${CONFIG.recordsPerPage}`;
+      const url = `/api/boards/paging?pageNo=${pageNo}&numOfRows=${CONFIG.recordsPerPage}`;
       const result = await this.call('get', url);
 
       if (result && result.header.rtcd === 'S00') {
@@ -122,7 +149,7 @@ const doBoard = ()=>{
     },
 
     async getTotalCount() {
-      const url = '/api/Boards/totCnt';
+      const url = '/api/boards/totCnt';
       const result = await this.call('get', url);
 
       if (result && result.body != null) {
@@ -155,7 +182,7 @@ const doBoard = ()=>{
 
       for (const field of fieldConfigs) {
         const inputElement = formElement[field.name];
-        if (inputElement.value.trim().length === 0) {
+        if (inputElement && inputElement.value.trim().length === 0) {
           const errSpan = formElement.querySelector(`#err${field.name.charAt(0).toUpperCase() + field.name.slice(1)}`);
           if (errSpan) errSpan.textContent = `${field.label}은(는) 필수 항목입니다.`;
           if (isValid) {
@@ -175,7 +202,10 @@ const doBoard = ()=>{
           ${formFieldsConfig.add.map(field => `
             <div>
               <label for="${field.name}">${field.label}</label>
-              <input type="text" id="${field.name}" name="${field.name}"/>
+              ${field.name === 'content'
+                ? `<textarea id="${field.name}" name="${field.name}" rows="3"></textarea>`
+                : `<input type="text" id="${field.name}" name="${field.name}"/>`
+              }
               <span class="field-error client" id="err${field.name.charAt(0).toUpperCase() + field.name.slice(1)}"></span>
             </div>
           `).join('')}
@@ -209,15 +239,15 @@ const doBoard = ()=>{
               <input type="text" id="BoardId2" name="BoardId" readonly />
           </div>
           <div>
-              <label for="title2">게시글명</label>
+              <label for="title2">제목</label>
               <input type="text" id="title2" name="title" />
           </div>
           <div>
-              <label for="content2">수량</label>
-              <input type="text" id="content2" name="content" />
+              <label for="content2">내용</label>
+              <textarea id="content2" name="content" rows="5"></textarea>
           </div>
           <div>
-              <label for="writer2">가격</label>
+              <label for="writer2">작성자</label>
               <input type="text" id="writer2" name="writer" />
           </div>
           <div class='btns'></div>
@@ -266,6 +296,7 @@ const doBoard = ()=>{
         if (confirm('삭제하시겠습니까?')) api.deleteBoard(pid, frm);
       });
     },
+
     //게시글 수정 모드
     changeEditMode(frm) {
       frm.classList.remove('mode-read');
@@ -297,15 +328,15 @@ const doBoard = ()=>{
       $btnCancel.replaceWith($btnCancel.cloneNode(true));
       $btns.querySelector('#btnCancel').addEventListener('click', () => {
         const boardIdInput = frm.querySelector('#BoardId2');
-        if (boardIdInput) {
+        if (boardIdInput && boardIdInput.value) {
           api.getBoard(boardIdInput.value);
         }
         this.changeReadMode(frm);
-      };
+      });
     },
 
     toggleInputReadOnly(frm, isReadOnly) {
-      [...frm.querySelectorAll('input')].forEach(input => {
+      [...frm.querySelectorAll('input, textarea')].forEach(input => {
         if (input.name !== 'BoardId') {
           input.readOnly = isReadOnly;
         }
@@ -317,7 +348,7 @@ const doBoard = ()=>{
 
       if (!Array.isArray(Boards)) {
         console.error('displayBoardList: Boards 인자는 배열이어야 합니다.', Boards);
-        elements.list.innerHTML = '<tr><td colspan="2">게시글 데이터를 불러올 수 없습니다.</td></tr>';
+        elements.list.innerHTML = '<p class="alert">게시글 데이터를 불러올 수 없습니다.</p>';
         return;
       }
 
@@ -391,7 +422,8 @@ const doBoard = ()=>{
   return {
     init
   };
-}
+};
+
 // 게시글 관리 모듈
 const BoardManager = doBoard();
 

@@ -1,4 +1,4 @@
-package com.kdt.board.domain.comments.dao;
+package com.kdt.board.domain.comment.dao;
 
 import com.kdt.board.domain.entity.Comment;
 

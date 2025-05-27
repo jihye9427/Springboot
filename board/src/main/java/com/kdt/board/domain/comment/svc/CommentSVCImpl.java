@@ -1,6 +1,6 @@
-package com.kdt.board.domain.comments.svc;
+package com.kdt.board.domain.comment.svc;
 
-import com.kdt.board.domain.comments.dao.CommentDAO;
+import com.kdt.board.domain.comment.dao.CommentDAO;
 import com.kdt.board.domain.entity.Comment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
