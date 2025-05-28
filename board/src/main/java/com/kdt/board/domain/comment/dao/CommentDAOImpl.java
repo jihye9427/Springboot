@@ -28,7 +28,7 @@ public class CommentDAOImpl implements CommentDAO {
   public Long save(Comment comments) {
     StringBuffer sql = new StringBuffer();
     sql.append("INSERT INTO comments(comment_id, board_id, parent_id, writer, content, created_at) ");
-    sql.append("VALUES (seq_comment_id.NEXTVAL, :boardId, :parentId, :writer, :content, SYSTIMESTAMP) ");
+    sql.append("VALUES (comments_comment_id_seq.NEXTVAL, :boardId, :parentId, :writer, :content, SYSTIMESTAMP) ");
 
     SqlParameterSource param = new BeanPropertySqlParameterSource(comments);
 

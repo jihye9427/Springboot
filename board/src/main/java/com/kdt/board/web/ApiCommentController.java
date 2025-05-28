@@ -4,6 +4,7 @@ import com.kdt.board.domain.comment.svc.CommentSVC;
 import com.kdt.board.domain.entity.Comment;
 import com.kdt.board.web.form.comments.SaveForm;
 import com.kdt.board.web.form.comments.UpdateForm;
+import com.kdt.board.web.form.login.LoginMember;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +32,12 @@ public class ApiCommentController {
   public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
     Map<String, Object> response = new HashMap<>();
 
-    String loginMember = (String) session.getAttribute("loginMember");
+    // LoginMember 객체로 캐스팅
+    LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember != null) {
       response.put("success", true);
-      response.put("username", loginMember);
-      response.put("data", Map.of("username", loginMember));
+      response.put("username", loginMember.getNickname()); // 닉네임 사용
+      response.put("data", Map.of("username", loginMember.getNickname()));
     } else {
       response.put("success", false);
       response.put("message", "로그인되지 않은 사용자입니다.");
@@ -85,16 +87,18 @@ public class ApiCommentController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // 세션에서 로그인 사용자 확인
-    String loginMember = (String) session.getAttribute("loginMember");
+    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
       response.put("success", false);
       response.put("message", "로그인이 필요합니다.");
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
+    String currentUsername = loginMember.getNickname(); // 닉네임 사용
+
     // 작성자 권한 확인 (보안 강화)
-    if (!loginMember.equals(saveForm.getWriter())) {
+    if (!currentUsername.equals(saveForm.getWriter())) {
       response.put("success", false);
       response.put("message", "본인 계정으로만 댓글 작성이 가능합니다.");
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
@@ -124,12 +128,12 @@ public class ApiCommentController {
       response.put("data", savedComment);
 
       log.info("댓글 등록 완료. commentId: {}, boardId: {}, writer: {}",
-          commentId, boardId, loginMember);
+          commentId, boardId, currentUsername);
 
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
     } catch (Exception e) {
-      log.error("댓글 등록 중 오류 발생. boardId: {}, writer: {}", boardId, loginMember, e);
+      log.error("댓글 등록 중 오류 발생. boardId: {}, writer: {}", boardId, currentUsername, e);
 
       response.put("success", false);
       response.put("message", "댓글 등록 중 오류가 발생했습니다.");
@@ -154,13 +158,15 @@ public class ApiCommentController {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // 세션에서 로그인 사용자 확인
-    String loginMember = (String) session.getAttribute("loginMember");
+    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
       response.put("success", false);
       response.put("message", "로그인이 필요합니다.");
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
+
+    String currentUsername = loginMember.getNickname(); // 닉네임 사용
 
     try {
       // 댓글 존재 여부 확인
@@ -174,7 +180,7 @@ public class ApiCommentController {
       Comment comment = commentOpt.get();
 
       // 작성자 권한 확인
-      if (!comment.getWriter().equals(loginMember)) {
+      if (!comment.getWriter().equals(currentUsername)) {
         response.put("success", false);
         response.put("message", "작성자만 수정 가능합니다.");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
@@ -193,7 +199,7 @@ public class ApiCommentController {
         response.put("message", "댓글이 수정되었습니다.");
         response.put("data", updatedComment);
 
-        log.info("댓글 수정 완료. commentId: {}, writer: {}", commentId, loginMember);
+        log.info("댓글 수정 완료. commentId: {}, writer: {}", commentId, currentUsername);
       } else {
         response.put("success", false);
         response.put("message", "댓글 수정에 실패했습니다.");
@@ -203,7 +209,7 @@ public class ApiCommentController {
       return ResponseEntity.ok(response);
 
     } catch (Exception e) {
-      log.error("댓글 수정 중 오류 발생. commentId: {}, writer: {}", commentId, loginMember, e);
+      log.error("댓글 수정 중 오류 발생. commentId: {}, writer: {}", commentId, currentUsername, e);
 
       response.put("success", false);
       response.put("message", "댓글 수정 중 오류가 발생했습니다.");
@@ -219,13 +225,15 @@ public class ApiCommentController {
 
     Map<String, Object> response = new HashMap<>();
 
-    // 세션에서 로그인 사용자 확인
-    String loginMember = (String) session.getAttribute("loginMember");
+    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
       response.put("success", false);
       response.put("message", "로그인이 필요합니다.");
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
+
+    String currentUsername = loginMember.getNickname(); // 닉네임 사용
 
     try {
       // 댓글 존재 여부 확인
@@ -239,7 +247,7 @@ public class ApiCommentController {
       Comment comment = commentOpt.get();
 
       // 작성자 권한 확인
-      if (!comment.getWriter().equals(loginMember)) {
+      if (!comment.getWriter().equals(currentUsername)) {
         response.put("success", false);
         response.put("message", "작성자만 삭제 가능합니다.");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
@@ -253,7 +261,7 @@ public class ApiCommentController {
         response.put("message", "댓글이 삭제되었습니다.");
         response.put("deletedCommentId", commentId);
 
-        log.info("댓글 삭제 완료. commentId: {}, writer: {}", commentId, loginMember);
+        log.info("댓글 삭제 완료. commentId: {}, writer: {}", commentId, currentUsername);
       } else {
         response.put("success", false);
         response.put("message", "댓글 삭제에 실패했습니다.");
@@ -263,7 +271,7 @@ public class ApiCommentController {
       return ResponseEntity.ok(response);
 
     } catch (Exception e) {
-      log.error("댓글 삭제 중 오류 발생. commentId: {}, writer: {}", commentId, loginMember, e);
+      log.error("댓글 삭제 중 오류 발생. commentId: {}, writer: {}", commentId, currentUsername, e);
 
       response.put("success", false);
       response.put("message", "댓글 삭제 중 오류가 발생했습니다.");

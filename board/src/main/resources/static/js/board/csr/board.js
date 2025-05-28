@@ -1,5 +1,4 @@
-
-import { ajax, PaginationUI } from '/js/board/common.js';
+import { ajax, PaginationUI } from '/js/common.js';
 import commentManager from '/js/board/csr/comment.js';
 
 let currentPage = 1; // 현재 보고 있는 페이지

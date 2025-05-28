@@ -32,7 +32,7 @@ public class AppConfig implements WebMvcConfigurer {
             "/",   //초기화면
             "/login",          //로그인화면
             "/logout",         //로그아웃
-            "/members/join",   //회원가입
+            "/member/join",   //회원가입
             "/board/**"        //게시판
         );
     registry.addInterceptor(executionTimeInterceptor)
