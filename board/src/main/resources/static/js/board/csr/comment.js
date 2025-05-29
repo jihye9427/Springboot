@@ -1,7 +1,7 @@
-import { ajax } from '/js/common.js';
+import { ajax } from './common.js'; // common.js에서 ajax 가져오기
 
 let commentInput, submitButton, commentsList, deleteDialog, confirmDeleteButton, cancelDeleteButton;
-let boardId = null;
+let boardId = 1; // 테스트용 게시글 ID (실제로는 동적으로 설정)
 let comments = [];
 let deleteCommentId = null;
 let currentUser = null;
@@ -11,14 +11,17 @@ const getCurrentUser = async () => {
   try {
     const result = await ajax.get('/api/comments/current-user');
 
-    if (result.success) {
-      currentUser = result.data.username;
+    if (result.header && result.header.rtcd === 'S00') {
+      currentUser = result.body.username;
+      console.log('현재 로그인 사용자:', currentUser);
       return true;
     } else {
       currentUser = null;
+      console.log('로그인되지 않은 사용자');
       return false;
     }
   } catch (error) {
+    console.error('사용자 정보 조회 실패:', error);
     currentUser = null;
     return false;
   }
@@ -29,14 +32,17 @@ const getComments = async () => {
   try {
     const result = await ajax.get(`/api/comments/${boardId}`);
 
-    if (result.success) {
-      comments = result.data || [];
+    if (result.header && result.header.rtcd === 'S00') {
+      comments = result.body || [];
+      console.log('댓글 목록 조회 성공:', comments);
       renderComments();
     } else {
+      console.log('댓글 목록 조회 실패:', result?.header?.rtmsg);
       comments = [];
       renderComments();
     }
   } catch (error) {
+    console.error('댓글 목록 조회 중 오류:', error);
     comments = [];
     renderComments();
   }
@@ -62,7 +68,6 @@ const addComment = async () => {
       return;
     }
 
-    // 백엔드 API에 맞는 형태로 데이터 전송
     const requestData = {
       content: commentText,
       writer: currentUser
@@ -70,19 +75,20 @@ const addComment = async () => {
 
     const response = await ajax.post(`/api/comments/${boardId}`, requestData);
 
-    if (response.success) {
+    if (response.header && response.header.rtcd === 'S00') {
       commentInput.value = '';
+      console.log('댓글 작성 성공');
       await getComments();
     } else {
-      alert(response.message || '댓글 작성에 실패했습니다.');
+      alert(response.header?.rtmsg || '댓글 작성에 실패했습니다.');
     }
 
   } catch (error) {
-    // HTTP 상태 코드별 처리
-    if (error.status === 401) {
+    console.error('댓글 작성 중 오류:', error);
+    if (error.message.includes('401')) {
       alert('로그인이 필요합니다.');
       currentUser = null;
-    } else if (error.status === 403) {
+    } else if (error.message.includes('403')) {
       alert('댓글 작성 권한이 없습니다.');
     } else {
       alert('댓글 작성에 실패했습니다.');
@@ -90,11 +96,11 @@ const addComment = async () => {
   }
 };
 
-// 댓글 삭제 확인
-function showDeleteDialog(id) {
+// 댓글 삭제 확인 다이얼로그 표시
+const showDeleteDialog = (id) => {
   deleteCommentId = id;
   deleteDialog.showModal();
-}
+};
 
 // 댓글 삭제
 const deleteComment = async () => {
@@ -103,21 +109,23 @@ const deleteComment = async () => {
 
     deleteDialog.close();
 
-    if (response.success) {
+    if (response.header && response.header.rtcd === 'S00') {
+      console.log('댓글 삭제 성공');
       await getComments();
     } else {
-      alert(response.message || '댓글 삭제에 실패했습니다.');
+      alert(response.header?.rtmsg || '댓글 삭제에 실패했습니다.');
     }
 
   } catch (error) {
     deleteDialog.close();
+    console.error('댓글 삭제 중 오류:', error);
 
-    if (error.status === 401) {
+    if (error.message.includes('401')) {
       alert('로그인이 필요합니다.');
       currentUser = null;
-    } else if (error.status === 403) {
+    } else if (error.message.includes('403')) {
       alert('작성자만 삭제할 수 있습니다.');
-    } else if (error.status === 404) {
+    } else if (error.message.includes('404')) {
       alert('댓글을 찾을 수 없습니다.');
     } else {
       alert('댓글 삭제에 실패했습니다.');
@@ -132,7 +140,7 @@ const cancelDelete = () => {
 };
 
 // 댓글 수정
-const editComment = async id => {
+const editComment = async (id) => {
   try {
     const comment = comments.find(c => c.commentId === id);
 
@@ -141,7 +149,7 @@ const editComment = async id => {
       return;
     }
 
-    // 작성자 권한 확인
+    // 작성자 권한 확인 (클라이언트 사이드 추가 검증)
     if (comment.writer !== currentUser) {
       alert('작성자만 수정할 수 있습니다.');
       return;
@@ -156,19 +164,21 @@ const editComment = async id => {
 
       const response = await ajax.patch(`/api/comments/${id}`, requestData);
 
-      if (response.success) {
+      if (response.header && response.header.rtcd === 'S00') {
+        console.log('댓글 수정 성공');
         await getComments();
       } else {
-        alert(response.message || '댓글 수정에 실패했습니다.');
+        alert(response.header?.rtmsg || '댓글 수정에 실패했습니다.');
       }
     }
   } catch (error) {
-    if (error.status === 401) {
+    console.error('댓글 수정 중 오류:', error);
+    if (error.message.includes('401')) {
       alert('로그인이 필요합니다.');
       currentUser = null;
-    } else if (error.status === 403) {
+    } else if (error.message.includes('403')) {
       alert('작성자만 수정할 수 있습니다.');
-    } else if (error.status === 404) {
+    } else if (error.message.includes('404')) {
       alert('댓글을 찾을 수 없습니다.');
     } else {
       alert('댓글 수정에 실패했습니다.');
@@ -176,9 +186,10 @@ const editComment = async id => {
   }
 };
 
-// 댓글 렌더링
+// 댓글 렌더링 (작성자 권한 기반)
 function renderComments() {
   if (!commentsList) {
+    console.error('댓글 목록 요소를 찾을 수 없습니다.');
     return;
   }
 
@@ -202,12 +213,12 @@ function renderComments() {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
 
-    // 현재 사용자가 작성한 댓글인지 확인
+    // 현재 사용자가 작성한 댓글인지 확인 (핵심 권한 체크)
     const isMyComment = currentUser && comment.writer === currentUser;
 
     commentDiv.innerHTML = `
       <div class="comment-content">
-        <span class="comment-text">${escapedContent}</span>
+        <div class="comment-text">${escapedContent}</div>
         <div class="comment-meta">
           <span class="comment-writer">작성자: ${comment.writer || '익명'}</span>
           <span class="comment-date">${comment.createDate || ''}</span>
@@ -222,40 +233,12 @@ function renderComments() {
     `;
     commentsList.appendChild(commentDiv);
   });
+
+  console.log(`댓글 ${comments.length}개 렌더링 완료. 현재 사용자: ${currentUser}`);
 }
 
-// 댓글 섹션 생성
-function createCommentsSection() {
-  // 기존 섹션이 있다면 제거
-  const existingSection = document.getElementById('comments-section');
-  if (existingSection) {
-    existingSection.remove();
-  }
-
-  const section = document.createElement('div');
-  section.id = 'comments-section';
-  section.innerHTML = `
-    <h3>댓글</h3>
-    <div class="comment-form">
-      <textarea id="comment-input" placeholder="댓글을 입력하세요" rows="3"></textarea>
-      <button type="button" id="submit-button">등록</button>
-    </div>
-    <div id="comments-list"></div>
-
-    <!-- 삭제 확인 다이얼로그 -->
-    <dialog id="delete-dialog">
-      <div class="dialog-content">
-        <p>정말로 이 댓글을 삭제하시겠습니까?</p>
-        <div class="dialog-buttons">
-          <button type="button" id="confirm-delete">삭제</button>
-          <button type="button" id="cancel-delete">취소</button>
-        </div>
-      </div>
-    </dialog>
-  `;
-
-  document.body.appendChild(section);
-
+// DOM이 로드된 후 초기화
+document.addEventListener('DOMContentLoaded', async () => {
   // DOM 요소 참조
   commentInput = document.getElementById("comment-input");
   submitButton = document.getElementById("submit-button");
@@ -265,18 +248,11 @@ function createCommentsSection() {
   cancelDeleteButton = document.getElementById("cancel-delete");
 
   // DOM 요소 존재 확인
-  const elements = {
-    commentInput,
-    submitButton,
-    commentsList,
-    deleteDialog,
-    confirmDeleteButton,
-    cancelDeleteButton
-  };
-
+  const elements = { commentInput, submitButton, commentsList, deleteDialog, confirmDeleteButton, cancelDeleteButton };
   for (const [name, element] of Object.entries(elements)) {
     if (!element) {
-      return false;
+      console.error(`${name} 요소를 찾을 수 없습니다.`);
+      return;
     }
   }
 
@@ -293,43 +269,13 @@ function createCommentsSection() {
     }
   });
 
-  return true;
-}
+  // 전역 함수 등록 (HTML onclick에서 사용)
+  window.showDeleteDialog = showDeleteDialog;
+  window.editComment = editComment;
 
-// 댓글 섹션 숨기기 (board.js에서 호출)
-const hideCommentsSection = () => {
-  const section = document.getElementById('comments-section');
-  if (section) {
-    section.remove();
-  }
-  // 상태 초기화
-  boardId = null;
-  comments = [];
-  deleteCommentId = null;
-};
-
-// 초기화
-const init = async id => {
-  if (!id) {
-    return false;
-  }
-
-  boardId = id;
-
-  // 현재 사용자 정보 가져오기
+  // 초기 데이터 로드
+  console.log('댓글 시스템 초기화 시작...');
   await getCurrentUser();
-
-  if (createCommentsSection()) {
-    getComments();
-    return true;
-  }
-
-  return false;
-};
-
-// 전역 함수 등록
-window.showDeleteDialog = showDeleteDialog;
-window.editComment = editComment;
-
-const commentManager = { init, hideCommentsSection };
-export default commentManager;
+  await getComments();
+  console.log('댓글 시스템 초기화 완료');
+});

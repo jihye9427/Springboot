@@ -53,7 +53,7 @@
 <body>
 <div class="container">
   <h3 th:if="${!session.isEmpty()}">
-    <span th:text="${session.loginMember.nickname}"></span>방문을 환영 합니다.
+    <span th:text="${session.loginMember.nickname}"></span>님 방문을 환영 합니다.
   </h3>
   <!-- 로그인 전-->
   <ul th:if="${session.isEmpty()}">

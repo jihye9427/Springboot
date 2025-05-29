@@ -289,4 +289,15 @@ public class ApiBoardController {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
   }
+
+  @GetMapping("/board")
+  public String board() {
+    // src/main/resources/templates/board.html 을 렌더링
+    return "board";
+  }
+
+  @GetMapping("/")
+  public String home() {
+    return "index";  // 홈 템플릿
+  }
 }

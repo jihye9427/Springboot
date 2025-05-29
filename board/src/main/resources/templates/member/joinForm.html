@@ -32,7 +32,11 @@
       </div>
     </div>
     <div><label th:for="tel">전화번호</label><input type="text" th:field="*{tel}"></div>
-    <div><label th:for="nickname">별칭</label><input type="text" th:field="*{nickname}"></div>
+    <div>
+      <label th:for="nickname">별칭</label><input type="text" th:field="*{nickname}">
+      <div class="field-err" th:each="err : ${#fields.errors('nickname')}">
+        <span th:text="${err}"></span>
+    </div>
     <div>
       <div><span>성별</span></div>
       <div>

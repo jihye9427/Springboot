@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,40 +32,110 @@ public class ApiCommentController {
   @GetMapping("/current-user")
   public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
     Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
 
-    // LoginMember 객체로 캐스팅
     LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember != null) {
-      response.put("success", true);
-      response.put("username", loginMember.getNickname()); // 닉네임 사용
-      response.put("data", Map.of("username", loginMember.getNickname()));
+      header.put("rtcd", "S00");
+      header.put("rtmsg", "로그인 사용자 조회 성공");
+      response.put("header", header);
+      response.put("body", Map.of("username", loginMember.getNickname()));
     } else {
-      response.put("success", false);
-      response.put("message", "로그인되지 않은 사용자입니다.");
+      header.put("rtcd", "E01");
+      header.put("rtmsg", "로그인되지 않은 사용자입니다.");
+      response.put("header", header);
     }
 
     return ResponseEntity.ok(response);
   }
 
-  // 댓글 목록 조회
+  // 프론트엔드 호환성을 위한 간단한 댓글 목록 조회 API 추가
   @GetMapping("/{boardId}")
   public ResponseEntity<Map<String, Object>> findAll(@PathVariable Long boardId) {
-    try {
-      List<Comment> comments = commentsSVC.findAllbyBoardId(boardId);
+    Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
 
-      Map<String, Object> response = new HashMap<>();
-      response.put("success", true);
-      response.put("data", comments);
-      response.put("count", comments.size());
+    try {
+      List<Comment> allComments = commentsSVC.findAllbyBoardId(boardId);
+
+      header.put("rtcd", "S00");
+      header.put("rtmsg", "댓글 목록 조회 성공");
+      response.put("header", header);
+      response.put("body", allComments);
 
       return ResponseEntity.ok(response);
 
     } catch (Exception e) {
       log.error("댓글 목록 조회 중 오류 발생. boardId: {}", boardId, e);
 
-      Map<String, Object> response = new HashMap<>();
-      response.put("success", false);
-      response.put("message", "댓글 목록을 불러오는 중 오류가 발생했습니다.");
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "댓글 목록을 불러오는 중 오류가 발생했습니다.");
+      response.put("header", header);
+
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+  }
+
+  // 댓글 목록 조회 (페이징)
+  @GetMapping("/{boardId}/paging")
+  public ResponseEntity<Map<String, Object>> findAllWithPaging(
+      @PathVariable Long boardId,
+      @RequestParam(value = "pageNo", defaultValue = "1") int pageNo,
+      @RequestParam(value = "numOfRows", defaultValue = "10") int numOfRows) {
+
+    Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
+
+    try {
+      // 전체 댓글 조회 후 페이징 처리 (실제로는 DB에서 페이징 처리 권장)
+      List<Comment> allComments = commentsSVC.findAllbyBoardId(boardId);
+
+      int startIndex = (pageNo - 1) * numOfRows;
+      int endIndex = Math.min(startIndex + numOfRows, allComments.size());
+
+      List<Comment> pagedComments = allComments.subList(startIndex, Math.max(startIndex, endIndex));
+
+      header.put("rtcd", "S00");
+      header.put("rtmsg", "댓글 목록 조회 성공");
+      response.put("header", header);
+      response.put("body", pagedComments);
+
+      return ResponseEntity.ok(response);
+
+    } catch (Exception e) {
+      log.error("댓글 목록 조회 중 오류 발생. boardId: {}", boardId, e);
+
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "댓글 목록을 불러오는 중 오류가 발생했습니다.");
+      response.put("header", header);
+
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+  }
+
+  // 전체 댓글 수 조회
+  @GetMapping("/{boardId}/totCnt")
+  public ResponseEntity<Map<String, Object>> getTotalCount(@PathVariable Long boardId) {
+    Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
+
+    try {
+      List<Comment> allComments = commentsSVC.findAllbyBoardId(boardId);
+      int totalCount = allComments.size();
+
+      header.put("rtcd", "S00");
+      header.put("rtmsg", "전체 댓글 수 조회 성공");
+      response.put("header", header);
+      response.put("body", totalCount);
+
+      return ResponseEntity.ok(response);
+
+    } catch (Exception e) {
+      log.error("전체 댓글 수 조회 중 오류 발생. boardId: {}", boardId, e);
+
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "서버 오류가 발생했습니다.");
+      response.put("header", header);
 
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
@@ -79,33 +150,43 @@ public class ApiCommentController {
       HttpSession session) {
 
     Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
 
     if (bindingResult.hasErrors()) {
-      response.put("success", false);
-      response.put("message", "입력값이 올바르지 않습니다.");
-      response.put("errors", bindingResult.getAllErrors());
+      Map<String, String> details = new HashMap<>();
+      for (FieldError error : bindingResult.getFieldErrors()) {
+        details.put(error.getField(), error.getDefaultMessage());
+      }
+
+      header.put("rtcd", "E01");
+      header.put("rtmsg", "입력값 검증 실패");
+      header.put("details", details);
+      response.put("header", header);
+
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    // 세션에서 로그인 사용자 확인
     LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
-      response.put("success", false);
-      response.put("message", "로그인이 필요합니다.");
+      header.put("rtcd", "E02");
+      header.put("rtmsg", "로그인이 필요합니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
-    String currentUsername = loginMember.getNickname(); // 닉네임 사용
+    String currentUsername = loginMember.getNickname();
 
     // 작성자 권한 확인 (보안 강화)
     if (!currentUsername.equals(saveForm.getWriter())) {
-      response.put("success", false);
-      response.put("message", "본인 계정으로만 댓글 작성이 가능합니다.");
+      header.put("rtcd", "E03");
+      header.put("rtmsg", "본인 계정으로만 댓글 작성이 가능합니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     try {
-      // 댓글 저장
+      // 댓글 저장 (폼에서 받은 writer 사용)
       Comment comment = new Comment();
       comment.setBoardId(boardId);
       comment.setWriter(saveForm.getWriter());
@@ -113,30 +194,32 @@ public class ApiCommentController {
 
       Long commentId = commentsSVC.save(comment);
 
-      // 저장된 댓글 조회
       Optional<Comment> savedCommentOpt = commentsSVC.findById(commentId);
       if (savedCommentOpt.isEmpty()) {
-        response.put("success", false);
-        response.put("message", "댓글 저장 후 조회에 실패했습니다.");
+        header.put("rtcd", "E99");
+        header.put("rtmsg", "댓글 저장 후 조회에 실패했습니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
       }
 
       Comment savedComment = savedCommentOpt.get();
 
-      response.put("success", true);
-      response.put("message", "댓글이 등록되었습니다.");
-      response.put("data", savedComment);
+      header.put("rtcd", "S00");
+      header.put("rtmsg", "댓글이 등록되었습니다.");
+      response.put("header", header);
+      response.put("body", Map.of("commentId", commentId));
 
       log.info("댓글 등록 완료. commentId: {}, boardId: {}, writer: {}",
-          commentId, boardId, currentUsername);
+          commentId, boardId, saveForm.getWriter());
 
       return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
     } catch (Exception e) {
-      log.error("댓글 등록 중 오류 발생. boardId: {}, writer: {}", boardId, currentUsername, e);
+      log.error("댓글 등록 중 오류 발생. boardId: {}, writer: {}", boardId, saveForm.getWriter(), e);
 
-      response.put("success", false);
-      response.put("message", "댓글 등록 중 오류가 발생했습니다.");
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "댓글 등록 중 오류가 발생했습니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
   }
@@ -150,39 +233,50 @@ public class ApiCommentController {
       HttpSession session) {
 
     Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
 
     if (bindingResult.hasErrors()) {
-      response.put("success", false);
-      response.put("message", "입력값이 올바르지 않습니다.");
-      response.put("errors", bindingResult.getAllErrors());
+      Map<String, String> details = new HashMap<>();
+      for (FieldError error : bindingResult.getFieldErrors()) {
+        details.put(error.getField(), error.getDefaultMessage());
+      }
+
+      header.put("rtcd", "E01");
+      header.put("rtmsg", "입력값 검증 실패");
+      header.put("details", details);
+      response.put("header", header);
+
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    // 세션에서 로그인 사용자 확인
     LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
-      response.put("success", false);
-      response.put("message", "로그인이 필요합니다.");
+      header.put("rtcd", "E02");
+      header.put("rtmsg", "로그인이 필요합니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
-    String currentUsername = loginMember.getNickname(); // 닉네임 사용
+    String currentUsername = loginMember.getNickname();
 
     try {
       // 댓글 존재 여부 확인
       Optional<Comment> commentOpt = commentsSVC.findById(commentId);
       if (commentOpt.isEmpty()) {
-        response.put("success", false);
-        response.put("message", "댓글을 찾을 수 없습니다.");
+        header.put("rtcd", "E03");
+        header.put("rtmsg", "댓글을 찾을 수 없습니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
       }
 
       Comment comment = commentOpt.get();
 
-      // 작성자 권한 확인
+      // 작성자 권한 확인 - 핵심 보안 검증
       if (!comment.getWriter().equals(currentUsername)) {
-        response.put("success", false);
-        response.put("message", "작성자만 수정 가능합니다.");
+        header.put("rtcd", "E04");
+        header.put("rtmsg", "작성자만 수정 가능합니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
       }
 
@@ -191,18 +285,16 @@ public class ApiCommentController {
       int updateResult = commentsSVC.updateById(commentId, comment);
 
       if (updateResult > 0) {
-        // 수정된 댓글 다시 조회하여 반환
-        Optional<Comment> updatedCommentOpt = commentsSVC.findById(commentId);
-        Comment updatedComment = updatedCommentOpt.orElse(comment);
-
-        response.put("success", true);
-        response.put("message", "댓글이 수정되었습니다.");
-        response.put("data", updatedComment);
+        header.put("rtcd", "S00");
+        header.put("rtmsg", "댓글이 수정되었습니다.");
+        response.put("header", header);
+        response.put("body", Map.of("updatedRows", updateResult));
 
         log.info("댓글 수정 완료. commentId: {}, writer: {}", commentId, currentUsername);
       } else {
-        response.put("success", false);
-        response.put("message", "댓글 수정에 실패했습니다.");
+        header.put("rtcd", "E99");
+        header.put("rtmsg", "댓글 수정에 실패했습니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
       }
 
@@ -211,8 +303,9 @@ public class ApiCommentController {
     } catch (Exception e) {
       log.error("댓글 수정 중 오류 발생. commentId: {}, writer: {}", commentId, currentUsername, e);
 
-      response.put("success", false);
-      response.put("message", "댓글 수정 중 오류가 발생했습니다.");
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "댓글 수정 중 오류가 발생했습니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
   }
@@ -224,32 +317,36 @@ public class ApiCommentController {
       HttpSession session) {
 
     Map<String, Object> response = new HashMap<>();
+    Map<String, Object> header = new HashMap<>();
 
-    // 세션에서 로그인 사용자 확인 - LoginMember로 캐스팅
+    // 세션에서 로그인 사용자 확인
     LoginMember loginMember = (LoginMember) session.getAttribute("loginMember");
     if (loginMember == null) {
-      response.put("success", false);
-      response.put("message", "로그인이 필요합니다.");
+      header.put("rtcd", "E02");
+      header.put("rtmsg", "로그인이 필요합니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
-    String currentUsername = loginMember.getNickname(); // 닉네임 사용
+    String currentUsername = loginMember.getNickname();
 
     try {
       // 댓글 존재 여부 확인
       Optional<Comment> commentOpt = commentsSVC.findById(commentId);
       if (commentOpt.isEmpty()) {
-        response.put("success", false);
-        response.put("message", "댓글을 찾을 수 없습니다.");
+        header.put("rtcd", "E03");
+        header.put("rtmsg", "댓글을 찾을 수 없습니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
       }
 
       Comment comment = commentOpt.get();
 
-      // 작성자 권한 확인
+      // 작성자 권한 확인 - 핵심 보안 검증
       if (!comment.getWriter().equals(currentUsername)) {
-        response.put("success", false);
-        response.put("message", "작성자만 삭제 가능합니다.");
+        header.put("rtcd", "E04");
+        header.put("rtmsg", "작성자만 삭제 가능합니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
       }
 
@@ -257,14 +354,16 @@ public class ApiCommentController {
       int deleteResult = commentsSVC.deleteById(commentId);
 
       if (deleteResult > 0) {
-        response.put("success", true);
-        response.put("message", "댓글이 삭제되었습니다.");
-        response.put("deletedCommentId", commentId);
+        header.put("rtcd", "S00");
+        header.put("rtmsg", "댓글이 삭제되었습니다.");
+        response.put("header", header);
+        response.put("body", Map.of("deletedRows", deleteResult));
 
         log.info("댓글 삭제 완료. commentId: {}, writer: {}", commentId, currentUsername);
       } else {
-        response.put("success", false);
-        response.put("message", "댓글 삭제에 실패했습니다.");
+        header.put("rtcd", "E99");
+        header.put("rtmsg", "댓글 삭제에 실패했습니다.");
+        response.put("header", header);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
       }
 
@@ -273,8 +372,9 @@ public class ApiCommentController {
     } catch (Exception e) {
       log.error("댓글 삭제 중 오류 발생. commentId: {}, writer: {}", commentId, currentUsername, e);
 
-      response.put("success", false);
-      response.put("message", "댓글 삭제 중 오류가 발생했습니다.");
+      header.put("rtcd", "E99");
+      header.put("rtmsg", "댓글 삭제 중 오류가 발생했습니다.");
+      response.put("header", header);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
   }
